@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/fetch-slate",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/check-scores",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/finalize",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}
