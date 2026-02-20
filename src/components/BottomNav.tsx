@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 const NAV_ITEMS = [
   { href: '/picks', label: 'Picks', icon: '🎯' },
-  { href: '/leaderboard', label: 'Board', icon: '🏆' },
+  { href: '/board', label: 'Board', icon: '🏆' },
   { href: '/results', label: 'Results', icon: '📊' },
 ]
 

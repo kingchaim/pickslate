@@ -78,7 +78,10 @@ export default function GameCard({ game, pick, onPick, index, finalized }: GameC
           } disabled:cursor-default`}
         >
           <div className="text-sm font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            {game.away_team_abbr || game.away_team}
+            {game.away_team}
+          </div>
+          <div className="text-[10px] text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
+            {game.away_team_abbr}
           </div>
           {game.status === 'final' && game.away_score !== null && (
             <div className="text-lg font-black mt-1" style={{ fontFamily: 'var(--font-mono)' }}>
@@ -115,7 +118,10 @@ export default function GameCard({ game, pick, onPick, index, finalized }: GameC
           } disabled:cursor-default`}
         >
           <div className="text-sm font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            {game.home_team_abbr || game.home_team}
+            {game.home_team}
+          </div>
+          <div className="text-[10px] text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
+            {game.home_team_abbr}
           </div>
           {game.status === 'final' && game.home_score !== null && (
             <div className="text-lg font-black mt-1" style={{ fontFamily: 'var(--font-mono)' }}>
@@ -129,7 +135,7 @@ export default function GameCard({ game, pick, onPick, index, finalized }: GameC
       {pick && !finalized && (
         <div className="mt-2 text-center">
           <span className="text-[10px] font-semibold text-[var(--fire)] uppercase tracking-wider">
-            → {pick.pick === 'home' ? (game.home_team_abbr || game.home_team) : (game.away_team_abbr || game.away_team)}
+            → {pick.pick === 'home' ? game.home_team : game.away_team}
           </span>
         </div>
       )}

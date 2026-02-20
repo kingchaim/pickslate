@@ -196,6 +196,9 @@ CREATE POLICY "Users can insert own picks" ON public.picks
 CREATE POLICY "Users can update own picks" ON public.picks
   FOR UPDATE USING (auth.uid() = user_id);
 
+CREATE POLICY "Users can delete own picks" ON public.picks
+  FOR DELETE USING (auth.uid() = user_id);
+
 -- Daily scores: viewable by all authenticated (leaderboard)
 ALTER TABLE public.daily_scores ENABLE ROW LEVEL SECURITY;
 
