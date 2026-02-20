@@ -184,7 +184,7 @@ export default function PicksPage() {
       console.error('Pick error:', error)
       // Revert optimistic update
       setPicks(prevPicks)
-      showToast('Failed to save pick — try again')
+      showToast(`Pick error: ${error.message || error.code || JSON.stringify(error)}`)
     }
   }
 
