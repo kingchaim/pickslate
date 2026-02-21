@@ -56,16 +56,13 @@ export default function PicksPage() {
       .single()
 
     if (!profileData) {
-      const { data: newProfile } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authUser.id,
-          email: authUser.email,
-          display_name: authUser.email?.split('@')[0] || null,
-        }, { onConflict: 'id' })
-        .select()
-        .single()
-      profileData = newProfile
+      try {
+        const res = await fetch('/api/ensure-profile', { method: 'POST' })
+        if (res.ok) {
+          const { profile } = await res.json()
+          profileData = profile
+        }
+      } catch {}
     }
     setProfile(profileData)
 
