@@ -46,13 +46,16 @@ export async function POST() {
       return NextResponse.json({ profile: existing })
     }
 
-    // Create profile
+    // Create profile with unique username
+    const displayName = user.email?.split('@')[0] || 'user'
+    const username = displayName + '_' + user.id.slice(0, 4)
     const { data: profile, error } = await admin
       .from('profiles')
       .insert({
         id: user.id,
         email: user.email,
-        display_name: user.email?.split('@')[0] || null,
+        display_name: displayName,
+        username: username,
       })
       .select()
       .single()
