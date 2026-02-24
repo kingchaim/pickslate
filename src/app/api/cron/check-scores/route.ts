@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { finalizeSlate } from '@/lib/finalize'
 
 const BASE_URL = 'https://api.the-odds-api.com/v4'
 
@@ -14,8 +15,7 @@ const SPORT_API_KEYS: Record<string, string> = {
   mls: 'soccer_usa_mls',
 }
 
-// Runs every 30 minutes
-// Checks scores for all games in today's open slate
+// Runs every 30 minutes via Vercel cron
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   return checkScores()
 }
 
-// POST for manual trigger from admin (no auth needed — admin page handles auth)
+// POST for manual trigger from admin
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}))
   return checkScores(body.slate_id)
@@ -84,6 +84,7 @@ async function checkScores(specificSlateId?: string) {
     }
 
     const updates: string[] = []
+    let newlyFinalized = 0
 
     // Fetch scores per sport
     for (const [sport, sportGamesList] of Object.entries(sportGames)) {
@@ -98,12 +99,10 @@ async function checkScores(specificSlateId?: string) {
         const scores: any[] = await res.json()
 
         for (const game of sportGamesList) {
-          // Match by external_id
           const scoreData = scores.find((s: any) => s.id === game.external_id)
           if (!scoreData) continue
 
           if (scoreData.completed) {
-            // Game is final - extract scores
             const homeScore = scoreData.scores?.find((s: any) => s.name === game.home_team)
             const awayScore = scoreData.scores?.find((s: any) => s.name === game.away_team)
 
@@ -130,10 +129,10 @@ async function checkScores(specificSlateId?: string) {
                 .eq('game_id', game.id)
                 .neq('pick', winner)
 
+              newlyFinalized++
               updates.push(`${game.away_team_abbr} ${aScore} - ${hScore} ${game.home_team_abbr} (FINAL)`)
             }
           } else if (scoreData.scores) {
-            // Game is live
             const homeScore = scoreData.scores?.find((s: any) => s.name === game.home_team)
             const awayScore = scoreData.scores?.find((s: any) => s.name === game.away_team)
 
@@ -163,6 +162,21 @@ async function checkScores(specificSlateId?: string) {
       if (startedGames && startedGames.length > 0) {
         await supabase.from('slates').update({ status: 'locked' }).eq('id', slate.id)
         updates.push('Slate locked (first game started)')
+      }
+    }
+
+    // Auto-finalize: if all games are now final, calculate points immediately
+    if (newlyFinalized > 0) {
+      const { data: remaining } = await supabase
+        .from('games')
+        .select('id')
+        .eq('slate_id', slate.id)
+        .neq('status', 'final')
+        .limit(1)
+
+      if (!remaining || remaining.length === 0) {
+        const finalizeResult = await finalizeSlate(slate.id)
+        updates.push(`AUTO-FINALIZED: ${finalizeResult.message}`)
       }
     }
 
