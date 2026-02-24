@@ -57,6 +57,8 @@ export interface RankedGame {
   commence_time: string
   competitiveness: number // 0-1, higher = more competitive (closer odds)
   sport_priority: number
+  home_odds: number | null
+  away_odds: number | null
 }
 
 // Abbreviate team names (take first 3 chars of last word, or known abbrevs)
@@ -102,27 +104,30 @@ function abbreviate(name: string): string {
   return parts[parts.length - 1].substring(0, 3).toUpperCase()
 }
 
-// Calculate how competitive a game is from moneyline odds
-// Closer odds = more competitive = higher score
-function getCompetitiveness(game: OddsGame): number {
-  // Find h2h (moneyline) market from first bookmaker
+// Extract h2h decimal odds from first available bookmaker
+function extractH2HOdds(game: OddsGame): { homeOdds: number; awayOdds: number } | null {
   for (const bm of game.bookmakers) {
     const h2h = bm.markets.find(m => m.key === 'h2h')
     if (h2h && h2h.outcomes.length >= 2) {
-      const prices = h2h.outcomes.map(o => o.price)
-      // Convert American-style or decimal odds to implied probability
-      const probs = prices.map(p => {
-        if (p >= 2) {
-          // Decimal odds
-          return 1 / p
-        }
-        return 0.5
-      })
-      // Competitiveness = 1 - abs(prob1 - prob2)
-      // When probs are equal (50/50), competitiveness = 1
-      const diff = Math.abs(probs[0] - probs[1])
-      return Math.max(0, 1 - diff)
+      const homeOutcome = h2h.outcomes.find(o => o.name === game.home_team)
+      const awayOutcome = h2h.outcomes.find(o => o.name === game.away_team)
+      if (homeOutcome && awayOutcome) {
+        return { homeOdds: homeOutcome.price, awayOdds: awayOutcome.price }
+      }
     }
+  }
+  return null
+}
+
+// Calculate how competitive a game is from moneyline odds
+// Closer odds = more competitive = higher score
+function getCompetitiveness(game: OddsGame): number {
+  const odds = extractH2HOdds(game)
+  if (odds) {
+    const probHome = 1 / odds.homeOdds
+    const probAway = 1 / odds.awayOdds
+    const diff = Math.abs(probHome - probAway)
+    return Math.max(0, 1 - diff)
   }
   return 0.5 // default if no odds found
 }
@@ -162,6 +167,7 @@ export async function fetchTodaysGames(): Promise<RankedGame[]> {
       })
 
       for (const game of todaysGames) {
+        const odds = extractH2HOdds(game)
         allGames.push({
           external_id: game.id,
           sport: SPORT_MAP[sport] || sport,
@@ -172,6 +178,8 @@ export async function fetchTodaysGames(): Promise<RankedGame[]> {
           commence_time: game.commence_time,
           competitiveness: getCompetitiveness(game),
           sport_priority: i, // lower = higher priority sport
+          home_odds: odds?.homeOdds ?? null,
+          away_odds: odds?.awayOdds ?? null,
         })
       }
     } catch (err) {

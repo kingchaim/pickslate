@@ -29,5 +29,9 @@ export async function GET(request: NextRequest) {
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  return NextResponse.redirect(new URL('/picks', requestUrl.origin))
+  // Respect `next` query param for post-auth redirect (e.g. /join/CODE)
+  const next = requestUrl.searchParams.get('next')
+  const redirectPath = next && next.startsWith('/') ? next : '/picks'
+
+  return NextResponse.redirect(new URL(redirectPath, requestUrl.origin))
 }

@@ -150,7 +150,7 @@ body::before {
   border-radius: 12px;
   font-size: 14px;
   z-index: 100;
-  animation: slideUp 0.3s ease, fadeIn 0.3s ease;
+  animation: toastSlideUp 0.3s ease, fadeIn 0.3s ease;
 }
 
 /* Save indicator — flashes top-right */
@@ -210,7 +210,7 @@ body::before {
 
 /* --- Keyframes --- */
 
-@keyframes slideUp {
+@keyframes toastSlideUp {
   from { transform: translateX(-50%) translateY(20px); }
   to { transform: translateX(-50%) translateY(0); }
 }

@@ -62,6 +62,8 @@ export async function GET(request: Request) {
       away_team_abbr: g.away_team_abbr,
       commence_time: g.commence_time,
       status: 'upcoming',
+      home_odds: g.home_odds,
+      away_odds: g.away_odds,
     }))
 
     const { error: gamesError } = await supabase.from('games').insert(gamesToInsert)
@@ -115,6 +117,8 @@ export async function POST(request: Request) {
       away_team_abbr: g.away_team_abbr,
       commence_time: g.commence_time,
       status: 'upcoming',
+      home_odds: g.home_odds,
+      away_odds: g.away_odds,
     }))
 
     await supabase.from('games').insert(gamesToInsert)

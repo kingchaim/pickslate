@@ -19,6 +19,7 @@ export default function ResultsPage() {
   const [slateDate, setSlateDate] = useState('')
   const [games, setGames] = useState<Game[]>([])
   const [picks, setPicks] = useState<Map<string, Pick>>(new Map())
+  const [groupCode, setGroupCode] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -80,6 +81,18 @@ export default function ResultsPage() {
       picksData?.forEach((p: Pick) => picksMap.set(p.game_id, p))
       setPicks(picksMap)
 
+      // Get user's group invite code for share link
+      const { data: memberData } = await supabase
+        .from('group_members')
+        .select('groups(invite_code)')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single()
+      if (memberData?.groups) {
+        const groups = memberData.groups as any
+        setGroupCode(groups.invite_code)
+      }
+
       setLoading(false)
     }
 
@@ -122,7 +135,7 @@ export default function ResultsPage() {
       </div>
 
       <div className="mb-8">
-        <ShareCard score={score} profile={profile} streak={streak} date={slateDate} />
+        <ShareCard score={score} profile={profile} streak={streak} date={slateDate} picks={picks} games={games} groupCode={groupCode} />
       </div>
 
       <div className="mb-4">

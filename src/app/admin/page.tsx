@@ -79,11 +79,14 @@ export default function AdminPage() {
   }
 
   const triggerCheckScores = async () => {
+    if (!slate) return
     setActionLoading('scores')
     addLog('Checking scores...')
     try {
       const res = await fetch('/api/cron/check-scores', {
-        headers: { 'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || 'manual'}` }
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slate_id: slate.id }),
       })
       const data = await res.json()
       addLog(data.message || JSON.stringify(data))

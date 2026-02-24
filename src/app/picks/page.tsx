@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 import { useRouter } from 'next/navigation'
 import type { Game, Pick, Slate, Profile, Streak } from '@/types'
-import { getTodayEST } from '@/lib/dates'
+import { getTodayEST, formatDate } from '@/lib/dates'
 import { POINTS, calculatePoints, getStreakEmoji } from '@/lib/points'
 import GameCard from '@/components/GameCard'
 import BottomNav from '@/components/BottomNav'
@@ -229,6 +229,28 @@ export default function PicksPage() {
     }
   }
 
+  const handleSharePicks = async () => {
+    const today = getTodayEST()
+    const orangeBlocks = '🟧'.repeat(games.length)
+    const shareText = `🍆 PICKSLATE — ${formatDate(today)}
+
+Slate locked in ✅
+${orangeBlocks}
+
+pickslate.vercel.app`
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: shareText })
+      } catch {
+        // User cancelled
+      }
+    } else {
+      await navigator.clipboard.writeText(shareText)
+      showToast('Copied to clipboard!')
+    }
+  }
+
   const handleLockPicks = async () => {
     if (!allPicked) return
     setSaving(true)
@@ -446,23 +468,32 @@ export default function PicksPage() {
 
           {/* Celebration banner */}
           {showCelebration && !celebrationDismissed && slate?.status === 'open' && (
-            <div className="celebration-banner rounded-xl px-4 py-3 mb-4 flex items-center justify-between origin-top">
-              <div>
-                <p className="text-sm font-black tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
-                  SLATE COMPLETE
-                </p>
-                <p className="text-[10px] font-medium opacity-80 mt-0.5">
-                  All {games.length} picks locked in. Good luck!
-                </p>
+            <div className="celebration-banner rounded-xl px-4 py-3 mb-4 origin-top">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-black tracking-wider" style={{ fontFamily: 'var(--font-display)' }}>
+                    SLATE COMPLETE
+                  </p>
+                  <p className="text-[10px] font-medium opacity-80 mt-0.5">
+                    All {games.length} picks locked in. Good luck!
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCelebration(false)
+                    setCelebrationDismissed(true)
+                  }}
+                  className="text-black opacity-60 hover:opacity-100 text-sm flex-shrink-0 ml-2"
+                >
+                  ✕
+                </button>
               </div>
               <button
-                onClick={() => {
-                  setShowCelebration(false)
-                  setCelebrationDismissed(true)
-                }}
-                className="text-black opacity-60 hover:opacity-100 text-sm flex-shrink-0 ml-2"
+                onClick={handleSharePicks}
+                className="w-full mt-3 py-2.5 bg-black bg-opacity-20 text-white text-sm font-bold rounded-lg transition-all hover:bg-opacity-30 active:scale-[0.98]"
+                style={{ fontFamily: 'var(--font-display)' }}
               >
-                ✕
+                SHARE PICKS
               </button>
             </div>
           )}

@@ -44,6 +44,8 @@ export interface Game {
   away_score: number | null
   winner: 'home' | 'away' | null
   status: 'upcoming' | 'live' | 'final'
+  home_odds: number | null
+  away_odds: number | null
 }
 
 export interface Pick {

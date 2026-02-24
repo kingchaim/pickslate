@@ -3,6 +3,13 @@
 import { Game, Pick, SPORT_EMOJIS } from '@/types'
 import { formatTime, isGameLocked, timeUntil } from '@/lib/dates'
 
+function impliedProb(homeOdds: number, awayOdds: number): [number, number] {
+  const rawHome = 1 / homeOdds
+  const rawAway = 1 / awayOdds
+  const total = rawHome + rawAway // normalize to remove vig
+  return [Math.round((rawHome / total) * 100), Math.round((rawAway / total) * 100)]
+}
+
 interface GameCardProps {
   game: Game
   pick?: Pick
@@ -102,6 +109,11 @@ export default function GameCard({ game, pick, onPick, index, finalized, justPic
           <div className="text-[10px] text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
             {game.away_team_abbr}
           </div>
+          {game.home_odds != null && game.away_odds != null && (
+            <div className="text-[10px] text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
+              {impliedProb(game.home_odds, game.away_odds)[1]}%
+            </div>
+          )}
           {game.status === 'final' && game.away_score !== null && (
             <div className="text-lg font-black mt-1" style={{ fontFamily: 'var(--font-mono)' }}>
               {game.away_score}
@@ -142,6 +154,11 @@ export default function GameCard({ game, pick, onPick, index, finalized, justPic
           <div className="text-[10px] text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
             {game.home_team_abbr}
           </div>
+          {game.home_odds != null && game.away_odds != null && (
+            <div className="text-[10px] text-[var(--text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
+              {impliedProb(game.home_odds, game.away_odds)[0]}%
+            </div>
+          )}
           {game.status === 'final' && game.home_score !== null && (
             <div className="text-lg font-black mt-1" style={{ fontFamily: 'var(--font-mono)' }}>
               {game.home_score}

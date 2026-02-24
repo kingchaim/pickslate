@@ -1,6 +1,6 @@
 'use client'
 
-import { DailyScore, Profile, Streak } from '@/types'
+import { DailyScore, Profile, Streak, Game, Pick } from '@/types'
 import { formatDate } from '@/lib/dates'
 import { getPerformanceLabel, getStreakEmoji, getStreakLabel, getLeaderboardTitle } from '@/lib/points'
 
@@ -11,9 +11,12 @@ interface ShareCardProps {
   date: string
   rank?: number
   totalMembers?: number
+  picks?: Map<string, Pick>
+  games?: Game[]
+  groupCode?: string
 }
 
-export default function ShareCard({ score, profile, streak, date, rank, totalMembers }: ShareCardProps) {
+export default function ShareCard({ score, profile, streak, date, rank, totalMembers, picks, games, groupCode }: ShareCardProps) {
   const pct = score.total_picks > 0
     ? Math.round((score.correct_picks / score.total_picks) * 100)
     : 0
@@ -24,9 +27,22 @@ export default function ShareCard({ score, profile, streak, date, rank, totalMem
   const leaderboardTitle = getLeaderboardTitle(rank || 0, totalMembers || 0)
 
   // Generate the colored blocks (like Wordle)
-  const blocks = Array.from({ length: score.total_picks }, (_, i) => {
-    return i < score.correct_picks ? '🟩' : '🟥'
-  })
+  const blocks = (() => {
+    if (games && games.length > 0 && picks) {
+      // Real game-by-game results in game order
+      return games.map(game => {
+        const pick = picks.get(game.id)
+        if (!pick) return '⬜' // no pick made
+        if (pick.is_correct === true) return '🟩'
+        if (pick.is_correct === false) return '🟥'
+        return '⬜' // not yet graded
+      })
+    }
+    // Fallback: sequential greens then reds
+    return Array.from({ length: score.total_picks }, (_, i) =>
+      i < score.correct_picks ? '🟩' : '🟥'
+    )
+  })()
 
   const shareText = `🍆 PICKSLATE — ${formatDate(date)}
 
@@ -35,7 +51,7 @@ ${blocks.join('')}
 ${streak && streak.current_streak >= 3 ? `${streakEmoji} ${streakLabel} (${streak.current_streak} day streak)` : ''}
 +${score.total_points} pts${leaderboardTitle ? ` · ${leaderboardTitle}` : ''}
 
-pickslate.vercel.app/join/DICKS`
+pickslate.vercel.app${groupCode ? `/join/${groupCode}` : ''}`
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -97,10 +113,12 @@ pickslate.vercel.app/join/DICKS`
             className={`w-8 h-8 rounded-md flex items-center justify-center text-sm ${
               block === '🟩'
                 ? 'bg-[var(--neon-green)] bg-opacity-20 border border-[var(--neon-green)] border-opacity-40'
-                : 'bg-[var(--neon-red)] bg-opacity-20 border border-[var(--neon-red)] border-opacity-40'
+                : block === '🟥'
+                ? 'bg-[var(--neon-red)] bg-opacity-20 border border-[var(--neon-red)] border-opacity-40'
+                : 'bg-[var(--bg-card)] bg-opacity-40 border border-[var(--border-subtle)] border-opacity-40'
             }`}
           >
-            {block === '🟩' ? '✓' : '✗'}
+            {block === '🟩' ? '✓' : block === '🟥' ? '✗' : '—'}
           </div>
         ))}
       </div>

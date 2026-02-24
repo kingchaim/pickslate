@@ -22,25 +22,47 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  return checkScores()
+}
+
+// POST for manual trigger from admin (no auth needed — admin page handles auth)
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => ({}))
+  return checkScores(body.slate_id)
+}
+
+async function checkScores(specificSlateId?: string) {
   try {
     const supabase = createAdminClient()
     const apiKey = process.env.THE_ODDS_API_KEY
     if (!apiKey) throw new Error('THE_ODDS_API_KEY not set')
 
-    // Get today's slate
-    const now = new Date()
-    const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
-    const today = estDate.toISOString().split('T')[0]
+    let slate: any
 
-    const { data: slate } = await supabase
-      .from('slates')
-      .select('*')
-      .eq('date', today)
-      .in('status', ['open', 'locked'])
-      .single()
+    if (specificSlateId) {
+      const { data } = await supabase
+        .from('slates')
+        .select('*')
+        .eq('id', specificSlateId)
+        .single()
+      slate = data
+    } else {
+      // Get today's slate
+      const now = new Date()
+      const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
+      const today = estDate.toISOString().split('T')[0]
+
+      const { data } = await supabase
+        .from('slates')
+        .select('*')
+        .eq('date', today)
+        .in('status', ['open', 'locked'])
+        .single()
+      slate = data
+    }
 
     if (!slate) {
-      return NextResponse.json({ message: 'No active slate today' })
+      return NextResponse.json({ message: 'No active slate found' })
     }
 
     // Get games that aren't final yet
@@ -69,7 +91,7 @@ export async function GET(request: Request) {
       if (!apiSport) continue
 
       try {
-        const url = `${BASE_URL}/sports/${apiSport}/scores/?apiKey=${apiKey}&daysFrom=1`
+        const url = `${BASE_URL}/sports/${apiSport}/scores/?apiKey=${apiKey}&daysFrom=2`
         const res = await fetch(url)
         if (!res.ok) continue
 
@@ -130,16 +152,18 @@ export async function GET(request: Request) {
     }
 
     // If first game has started, lock the slate
-    const { data: startedGames } = await supabase
-      .from('games')
-      .select('id')
-      .eq('slate_id', slate.id)
-      .in('status', ['live', 'final'])
-      .limit(1)
+    if (slate.status === 'open') {
+      const { data: startedGames } = await supabase
+        .from('games')
+        .select('id')
+        .eq('slate_id', slate.id)
+        .in('status', ['live', 'final'])
+        .limit(1)
 
-    if (startedGames && startedGames.length > 0 && slate.status === 'open') {
-      await supabase.from('slates').update({ status: 'locked' }).eq('id', slate.id)
-      updates.push('Slate locked (first game started)')
+      if (startedGames && startedGames.length > 0) {
+        await supabase.from('slates').update({ status: 'locked' }).eq('id', slate.id)
+        updates.push('Slate locked (first game started)')
+      }
     }
 
     return NextResponse.json({
