@@ -3,16 +3,12 @@
 
 const BASE_URL = 'https://api.the-odds-api.com/v4'
 
-// Sports we care about, in priority order
+// In-season sports only — keeps API usage low (3 calls vs 8)
+// TODO: Add back when in season: americanfootball_nfl, baseball_mlb, americanfootball_ncaaf, soccer_epl, soccer_usa_mls
 const SPORTS = [
   'basketball_nba',
-  'americanfootball_nfl',
   'icehockey_nhl',
-  'baseball_mlb',
   'basketball_ncaab',
-  'americanfootball_ncaaf',
-  'soccer_epl',
-  'soccer_usa_mls',
 ] as const
 
 // Map API sport keys to our short codes
