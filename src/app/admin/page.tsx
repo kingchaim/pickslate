@@ -63,7 +63,7 @@ export default function AdminPage() {
 
   const triggerFetchSlate = async () => {
     setActionLoading('fetch')
-    addLog('Fetching today\'s games from The Odds API...')
+    addLog('Fetching today\'s games from ESPN...')
     try {
       const res = await fetch('/api/cron/fetch-slate', { method: 'POST' })
       const data = await res.json()

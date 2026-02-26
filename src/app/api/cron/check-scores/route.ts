@@ -1,19 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { finalizeSlate } from '@/lib/finalize'
-
-const BASE_URL = 'https://api.the-odds-api.com/v4'
-
-const SPORT_API_KEYS: Record<string, string> = {
-  nba: 'basketball_nba',
-  nfl: 'americanfootball_nfl',
-  nhl: 'icehockey_nhl',
-  mlb: 'baseball_mlb',
-  ncaab: 'basketball_ncaab',
-  ncaaf: 'americanfootball_ncaaf',
-  epl: 'soccer_epl',
-  mls: 'soccer_usa_mls',
-}
+import { fetchScoresForSport } from '@/lib/espn-api'
 
 // Runs every 30 minutes via Vercel cron
 export async function GET(request: Request) {
@@ -34,8 +22,6 @@ export async function POST(request: Request) {
 async function checkScores(specificSlateId?: string) {
   try {
     const supabase = createAdminClient()
-    const apiKey = process.env.THE_ODDS_API_KEY
-    if (!apiKey) throw new Error('THE_ODDS_API_KEY not set')
 
     let slate: any
 
@@ -47,7 +33,6 @@ async function checkScores(specificSlateId?: string) {
         .single()
       slate = data
     } else {
-      // Get today's slate
       const now = new Date()
       const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
       const today = estDate.toISOString().split('T')[0]
@@ -86,63 +71,47 @@ async function checkScores(specificSlateId?: string) {
     const updates: string[] = []
     let newlyFinalized = 0
 
-    // Fetch scores per sport
+    // Fetch scores per sport from ESPN
     for (const [sport, sportGamesList] of Object.entries(sportGames)) {
-      const apiSport = SPORT_API_KEYS[sport]
-      if (!apiSport) continue
-
       try {
-        const url = `${BASE_URL}/sports/${apiSport}/scores/?apiKey=${apiKey}&daysFrom=2`
-        const res = await fetch(url)
-        if (!res.ok) continue
-
-        const scores: any[] = await res.json()
+        const scores = await fetchScoresForSport(sport)
 
         for (const game of sportGamesList) {
-          const scoreData = scores.find((s: any) => s.id === game.external_id)
+          // Match by team names (ESPN IDs may differ from what we stored)
+          const scoreData = scores.find(s =>
+            s.home_team === game.home_team && s.away_team === game.away_team
+          )
           if (!scoreData) continue
 
-          if (scoreData.completed) {
-            const homeScore = scoreData.scores?.find((s: any) => s.name === game.home_team)
-            const awayScore = scoreData.scores?.find((s: any) => s.name === game.away_team)
+          if (scoreData.completed && scoreData.home_score !== null && scoreData.away_score !== null) {
+            const winner = scoreData.home_score > scoreData.away_score ? 'home' : 'away'
 
-            if (homeScore && awayScore) {
-              const hScore = parseInt(homeScore.score)
-              const aScore = parseInt(awayScore.score)
-              const winner = hScore > aScore ? 'home' : 'away'
+            await supabase.from('games').update({
+              home_score: scoreData.home_score,
+              away_score: scoreData.away_score,
+              winner,
+              status: 'final',
+            }).eq('id', game.id)
 
-              await supabase.from('games').update({
-                home_score: hScore,
-                away_score: aScore,
-                winner,
-                status: 'final',
-              }).eq('id', game.id)
+            // Mark picks correct/incorrect
+            await supabase.from('picks')
+              .update({ is_correct: true })
+              .eq('game_id', game.id)
+              .eq('pick', winner)
 
-              // Mark picks correct/incorrect
-              await supabase.from('picks')
-                .update({ is_correct: true })
-                .eq('game_id', game.id)
-                .eq('pick', winner)
+            await supabase.from('picks')
+              .update({ is_correct: false })
+              .eq('game_id', game.id)
+              .neq('pick', winner)
 
-              await supabase.from('picks')
-                .update({ is_correct: false })
-                .eq('game_id', game.id)
-                .neq('pick', winner)
-
-              newlyFinalized++
-              updates.push(`${game.away_team_abbr} ${aScore} - ${hScore} ${game.home_team_abbr} (FINAL)`)
-            }
-          } else if (scoreData.scores) {
-            const homeScore = scoreData.scores?.find((s: any) => s.name === game.home_team)
-            const awayScore = scoreData.scores?.find((s: any) => s.name === game.away_team)
-
-            if (homeScore && awayScore) {
-              await supabase.from('games').update({
-                home_score: parseInt(homeScore.score),
-                away_score: parseInt(awayScore.score),
-                status: 'live',
-              }).eq('id', game.id)
-            }
+            newlyFinalized++
+            updates.push(`${game.away_team_abbr} ${scoreData.away_score} - ${scoreData.home_score} ${game.home_team_abbr} (FINAL)`)
+          } else if (scoreData.home_score !== null && scoreData.away_score !== null) {
+            await supabase.from('games').update({
+              home_score: scoreData.home_score,
+              away_score: scoreData.away_score,
+              status: 'live',
+            }).eq('id', game.id)
           }
         }
       } catch (err) {
