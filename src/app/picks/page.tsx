@@ -29,6 +29,8 @@ export default function PicksPage() {
   const [onboardingDismissed, setOnboardingDismissed] = useState(true)
   const [justPickedGameId, setJustPickedGameId] = useState<string | null>(null)
   const [showSaved, setShowSaved] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameInput, setNameInput] = useState('')
   const [showCelebration, setShowCelebration] = useState(false)
   const [celebrationDismissed, setCelebrationDismissed] = useState(false)
   const [streak, setStreak] = useState<Streak | null>(null)
@@ -258,6 +260,16 @@ pickslate.vercel.app`
     setSaving(false)
   }
 
+  const saveName = async () => {
+    const trimmed = nameInput.trim()
+    if (!trimmed || !user) return
+    const supabase = createClient()
+    await supabase.from('profiles').update({ display_name: trimmed }).eq('id', user.id)
+    setProfile(prev => prev ? { ...prev, display_name: trimmed } : prev)
+    setEditingName(false)
+    showToast('Name updated!')
+  }
+
   const displayName = profile?.display_name || user?.email?.split('@')[0] || ''
   const currentStreak = streak?.current_streak || 0
   const streakEmoji = getStreakEmoji(currentStreak)
@@ -311,9 +323,27 @@ pickslate.vercel.app`
             </div>
             <div className="text-right">
               <div className="text-xs text-[var(--text-muted)]">Hey,</div>
-              <div className="text-sm font-semibold" style={{ fontFamily: 'var(--font-display)' }}>
-                {displayName}
-              </div>
+              {editingName ? (
+                <form onSubmit={(e) => { e.preventDefault(); saveName() }} className="flex items-center gap-1">
+                  <input
+                    autoFocus
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    onBlur={saveName}
+                    maxLength={20}
+                    className="w-24 px-2 py-0.5 text-sm font-semibold bg-[var(--bg-primary)] border border-[var(--fire)] rounded-lg text-right text-[var(--text-primary)] focus:outline-none"
+                    style={{ fontFamily: 'var(--font-display)' }}
+                  />
+                </form>
+              ) : (
+                <button
+                  onClick={() => { setNameInput(displayName); setEditingName(true) }}
+                  className="text-sm font-semibold hover:text-[var(--fire)] transition-colors"
+                  style={{ fontFamily: 'var(--font-display)' }}
+                >
+                  {displayName} ✏️
+                </button>
+              )}
               {/* Streak display */}
               {currentStreak >= 3 && (
                 <div className="text-[10px] text-[var(--fire)] font-semibold mt-0.5">
