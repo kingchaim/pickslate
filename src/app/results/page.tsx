@@ -146,7 +146,7 @@ export default function ResultsPage() {
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="text-base font-black text-[var(--fire)]" style={{ fontFamily: 'var(--font-mono)' }}>
+                    <div className={`text-base font-black ${isMe ? 'text-white' : 'text-[var(--fire)]'}`} style={{ fontFamily: 'var(--font-mono)' }}>
                       {entry.total_points}
                     </div>
                     <div className="text-[10px] text-[var(--text-muted)]">pts</div>
