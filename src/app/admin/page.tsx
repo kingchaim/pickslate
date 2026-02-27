@@ -79,14 +79,13 @@ export default function AdminPage() {
   }
 
   const triggerCheckScores = async () => {
-    if (!slate) return
     setActionLoading('scores')
-    addLog('Checking scores...')
+    addLog('Checking scores for all non-finalized slates...')
     try {
       const res = await fetch('/api/cron/check-scores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slate_id: slate.id }),
+        body: JSON.stringify({}),
       })
       const data = await res.json()
       addLog(data.message || JSON.stringify(data))
@@ -238,11 +237,11 @@ export default function AdminPage() {
 
         <button
           onClick={triggerCheckScores}
-          disabled={!!actionLoading || !slate}
+          disabled={!!actionLoading}
           className="w-full py-3 bg-yellow-600 text-white font-bold rounded-xl transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
           style={{ fontFamily: 'var(--font-display)' }}
         >
-          {actionLoading === 'scores' ? 'CHECKING...' : '📊 CHECK SCORES NOW'}
+          {actionLoading === 'scores' ? 'CHECKING...' : '📊 CHECK ALL SCORES'}
         </button>
 
         <button
