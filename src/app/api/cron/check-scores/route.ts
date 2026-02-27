@@ -33,15 +33,13 @@ async function checkScores(specificSlateId?: string) {
         .single()
       slate = data
     } else {
-      const now = new Date()
-      const estDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }))
-      const today = estDate.toISOString().split('T')[0]
-
+      // Find any non-finalized slate (not just today's) — catches orphaned slates
       const { data } = await supabase
         .from('slates')
         .select('*')
-        .eq('date', today)
         .in('status', ['open', 'locked'])
+        .order('date', { ascending: false })
+        .limit(1)
         .single()
       slate = data
     }
@@ -71,13 +69,12 @@ async function checkScores(specificSlateId?: string) {
     const updates: string[] = []
     let newlyFinalized = 0
 
-    // Fetch scores per sport from ESPN
+    // Fetch scores per sport from ESPN, using the slate's date
     for (const [sport, sportGamesList] of Object.entries(sportGames)) {
       try {
-        const scores = await fetchScoresForSport(sport)
+        const scores = await fetchScoresForSport(sport, slate.date)
 
         for (const game of sportGamesList) {
-          // Match by team names (ESPN IDs may differ from what we stored)
           const scoreData = scores.find(s =>
             s.home_team === game.home_team && s.away_team === game.away_team
           )
@@ -93,7 +90,6 @@ async function checkScores(specificSlateId?: string) {
               status: 'final',
             }).eq('id', game.id)
 
-            // Mark picks correct/incorrect
             await supabase.from('picks')
               .update({ is_correct: true })
               .eq('game_id', game.id)
@@ -150,7 +146,7 @@ async function checkScores(specificSlateId?: string) {
     }
 
     return NextResponse.json({
-      message: `Checked scores: ${updates.length} updates`,
+      message: `Checked scores for ${slate.date}: ${updates.length} updates`,
       updates,
     })
   } catch (err: any) {

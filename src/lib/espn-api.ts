@@ -174,13 +174,14 @@ export interface ESPNScoreResult {
   away_score: number | null
 }
 
-// Fetch scores for games — checks today's scoreboard
-export async function fetchScoresForSport(sportKey: string): Promise<ESPNScoreResult[]> {
+// Fetch scores for games — checks scoreboard for a given date (defaults to today)
+export async function fetchScoresForSport(sportKey: string, date?: string): Promise<ESPNScoreResult[]> {
   const sport = ESPN_SPORTS.find(s => s.key === sportKey)
   if (!sport) return []
 
   try {
-    const url = `${ESPN_BASE}/${sport.slug}/scoreboard`
+    const dateParam = date ? `?dates=${date.replace(/-/g, '')}` : ''
+    const url = `${ESPN_BASE}/${sport.slug}/scoreboard${dateParam}`
     const res = await fetch(url, { next: { revalidate: 0 } })
     if (!res.ok) return []
 
