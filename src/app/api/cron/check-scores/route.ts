@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { finalizeSlate } from '@/lib/finalize'
 import { fetchScoresForSport } from '@/lib/espn-api'
+import { requireAdmin } from '@/lib/api-auth'
 
 // Runs every 30 minutes via Vercel cron
 export async function GET(request: Request) {
@@ -15,6 +16,9 @@ export async function GET(request: Request) {
 
 // POST for manual trigger from admin
 export async function POST(request: Request) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = await request.json().catch(() => ({}))
   return checkScores(body.slate_id)
 }

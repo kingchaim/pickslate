@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { getAuthUser } from '@/lib/api-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,6 +8,9 @@ export const dynamic = 'force-dynamic'
 // Only exposes display names and pick counts — no actual pick data
 export async function GET(request: Request) {
   try {
+    const user = await getAuthUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
     const url = new URL(request.url)
     const slateId = url.searchParams.get('slate_id')
     if (!slateId) {
@@ -46,7 +50,7 @@ export async function GET(request: Request) {
     // Get profiles
     const { data: profiles, error: profilesError } = await admin
       .from('profiles')
-      .select('id, display_name, email')
+      .select('id, display_name')
       .in('id', userIds)
 
     if (profilesError) {
@@ -54,7 +58,7 @@ export async function GET(request: Request) {
     }
 
     const players = (profiles || []).map(p => ({
-      display_name: p.display_name || p.email?.split('@')[0] || 'Anonymous',
+      display_name: p.display_name || 'Anonymous',
       picks_count: userPickCounts[p.id] || 0,
       total_games: totalGames || 0,
       locked_in: (userPickCounts[p.id] || 0) >= (totalGames || 7),
@@ -68,7 +72,7 @@ export async function GET(request: Request) {
 
     // First names for social teaser
     const names = (profiles || [])
-      .map(p => (p.display_name || p.email?.split('@')[0] || 'Anonymous').split(' ')[0])
+      .map(p => (p.display_name || 'Anonymous').split(' ')[0])
       .slice(0, 2)
 
     return NextResponse.json({

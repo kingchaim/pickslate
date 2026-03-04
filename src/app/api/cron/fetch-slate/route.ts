@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { fetchTodaysGames, pickTop7 } from '@/lib/espn-api'
+import { requireAdmin } from '@/lib/api-auth'
 
 // Runs daily at 8am EST (12:00 UTC)
 export async function GET(request: Request) {
@@ -72,6 +73,9 @@ export async function GET(request: Request) {
 
 // POST for manual trigger from admin
 export async function POST(request: Request) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const supabase = createAdminClient()
     const now = new Date()

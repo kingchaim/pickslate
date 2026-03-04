@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { finalizeSlate } from '@/lib/finalize'
+import { requireAdmin } from '@/lib/api-auth'
 
 // Runs at 11pm EST (4:00 UTC next day)
 // Finalizes any non-finalized slate (catches orphaned slates too)
@@ -34,6 +35,9 @@ export async function GET(request: Request) {
 
 // POST for manual trigger from admin
 export async function POST(request: Request) {
+  const admin = await requireAdmin()
+  if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = await request.json().catch(() => ({}))
   if (!body.slate_id) {
     return NextResponse.json({ error: 'slate_id required' }, { status: 400 })
